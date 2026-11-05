@@ -6,6 +6,7 @@ import { EvidenceChart } from "../Evidence";
 import { NetworkMap } from "../NetworkMap";
 import { SeverityTag, StatusPill } from "../Status";
 import { StepCard } from "./StepCard";
+import { ThenNowCard } from "../ThenNow";
 import { AGENTS, AUTONOMY } from "@/sim/agents";
 import { aedProtected } from "@/sim/incidents";
 import { clock, duration } from "@/sim/time";
@@ -84,7 +85,7 @@ export function IncidentRoom() {
   };
 
   return (
-    <motion.div className="wall-glow fixed inset-x-0 bottom-0 top-16 z-40 flex flex-col"
+    <motion.div className="wall-glow fixed bottom-0 right-0 top-16 z-30 flex flex-col" style={{ left: "var(--sb)" }}
       initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }} transition={{ duration: 0.35 }}>
       <header className="flex items-center gap-6 border-b border-line bg-panel/80 px-8 py-4 backdrop-blur-xl">
         <button type="button" onClick={closeRoom} className="btn-line"><ArrowLeft className="h-4 w-4" /> Operations</button>
@@ -189,6 +190,7 @@ export function IncidentRoom() {
               </div>
             </div>
           )}
+          <ThenNowCard id={incident.id} className="mt-6" compact />
           <div className="mt-6 border-t border-line pt-5">
             <p className="eyebrow">What this is worth</p>
             <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">

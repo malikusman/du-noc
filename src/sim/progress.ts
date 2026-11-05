@@ -141,3 +141,10 @@ export function availability(statuses: Record<string, SiteStatus>) {
 export function subscribersAffected(incidents: IncidentState[]) {
   return incidents.reduce((n, s) => n + s.activePhases.reduce((m, p) => m + p.subscribers, 0), 0);
 }
+
+/** Minutes from the first signal to the last diagnosis step. */
+export function rootCauseMinutes(s: IncidentState) {
+  const hyps = s.steps.filter((x) => x.status === "done" && (x.step.hypotheses || x.step.kind === "tool"));
+  const last = hyps[hyps.length - 1];
+  return last ? Math.max(1, Math.round(last.at - s.incident.trigger)) : undefined;
+}

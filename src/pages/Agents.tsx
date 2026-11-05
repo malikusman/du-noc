@@ -87,7 +87,7 @@ export default function Agents() {
             {[...state.decisions].reverse().slice(0, 14).map((d, i) => (
               <li key={i} className="flex items-start gap-3 text-[12.5px]">
                 <span className="w-11 font-mono text-ink-4">{clock(d.t)}</span>
-                <span className={cx("rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold", d.kind === "approved" ? "bg-good/15 text-good" : d.kind === "rejected" ? "bg-bad/15 text-bad" : "bg-brand/15 text-brand")}>{d.kind === "autonomy" ? "Policy" : d.kind === "approved" ? "Approved" : "Rejected"}</span>
+                <span className={cx("rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold", d.kind === "approved" ? "bg-good/15 text-good" : d.kind === "rejected" ? "bg-bad/15 text-bad" : "bg-brand/15 text-brand")}>{d.kind === "autonomy" ? "Policy" : d.kind === "approved" ? "Approved" : "Rejected"}{d.by ? ` · ${d.by}` : ""}</span>
                 <span className="min-w-0 flex-1 text-ink-2">{d.detail}{d.incident && <span className="ml-1 font-mono text-[10.5px] text-ink-4">{d.incident}</span>}</span>
               </li>
             ))}

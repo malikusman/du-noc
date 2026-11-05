@@ -2,7 +2,7 @@
 
 A demo for du's NOC engineers showing how agentic AI runs inside a telecom Network Operations Centre. Nine agents watch a simulated du network. They turn alarm storms into single incidents and find root causes across RAN, transport, core, power and security. They act inside guardrails set per domain, ask an engineer when a step costs money or touches a customer, and close an incident only when the KPIs prove the fix.
 
-The research and plan are in [`docs/PLAN.md`](docs/PLAN.md).
+The research and plan are in [`docs/PLAN.md`](docs/PLAN.md). The story and talk track are in [`docs/STORY.md`](docs/STORY.md).
 
 ## Run it
 
@@ -34,17 +34,42 @@ The app runs entirely in the browser and is deterministic, so it plays out the s
 
 Bold rows open the incident room automatically.
 
-## Presenting (about 10 minutes)
+## Screens
 
-1. **Operations at 00:00.** Point out the three numbers, the alarm river and the agent feed. Press **Space**.
-2. **02:14 fibre cut.** The room opens. Let the Correlator and Diagnostician run, then press **A** to approve the splicing crew.
-3. Press **→** to jump between chapters. At **09:40** stress that no alarm ever fired.
-4. **13:20 GITEX.** Tie it to du's live pilot of agentic slicing.
-5. **18:45 storm.** Try **Reject** on the customer request to show the handover to engineers.
-6. **21:20 sleeping cell.** End the story with "found what no alarm could".
-7. Then visit **Reports** (shift handover), **Policy** (per-domain autonomy against TM Forum levels), **Agents**, **Knowledge** and **Security**.
+The sidebar uses the same two groups and names as the NOC sidebar the du team has already seen.
 
-Keys: `Space` play/pause · `→` next step or chapter · `A` approve · `Esc` close incident · `S` captions · `R` restart · `0–3` autonomy for all domains. The sun/moon button in the top bar switches between dark and light.
+- **Intelligence**
+  - Downtime Prevention: outages prevented today and a 7-day risk board.
+  - Incident Correlation: alarms collapsing into one incident, with the planned-vs-unplanned checks.
+  - Revenue Protection: AED at risk now, protected today, enterprise SLAs, GITEX, fraud.
+- **Operations**
+  - Overview: map, alarm river, approvals, agent feed, clock.
+  - Cell Site Management.
+  - Autonomous Remediation: the loop per incident and every action.
+  - Security Operations.
+  - Agent Observatory.
+  - Analytics & Reports: shift handovers.
+  - Executive Intelligence: the CTO's morning brief and "Ask the NOC".
+  - Knowledge Base.
+  - Settings: autonomy per domain, confidence floor, alerts, team, integrations.
+
+## Presenting (about 12 minutes)
+
+The full talk track is in [`docs/STORY.md`](docs/STORY.md). In short:
+
+1. **Title card.** "Two engineers, nine agents, one day." Press **Space**.
+2. **Act 1 · Night.** The 02:14 fibre cut opens by itself; press **A** to send the crew. Show **Last time vs today**, then **Incident Correlation**.
+3. **Act 2 · Day.**
+   - 07:00: the handover in Reports.
+   - 09:40: the change rollback.
+   - 11:30: Downtime Prevention.
+   - 13:20: GITEX, then Revenue Protection.
+4. **Act 3 · Evening.**
+   - 18:45: "Attack or bug?" Try **Reject**.
+   - 21:20: the sleeping cell.
+5. **Epilogue.** Executive Intelligence (the CTO brief and Ask the NOC), then Settings for autonomy per domain.
+
+Keys: `Space` play/pause · `→` next step or chapter · `A` approve · `Esc` close incident · `S` captions · `R` restart · `0–3` autonomy for all domains. The sun/moon button switches between dark and light, and the sidebar collapses for a bigger map.
 
 ## How it is built
 
@@ -57,6 +82,8 @@ Keys: `Space` play/pause · `→` next step or chapter · `A` approve · `Esc` c
   - `alarms.ts`: the alarm river
   - `agents.ts`: agents, autonomy and guardrails
   - `knowledge.ts`: MOPs, policies, changes, past incidents
+  - `insight.ts`: alarm breakdowns, correlation checks, last-time-vs-today, risk board, enterprise customers, team and integrations
+  - `story.ts`: the three acts and the captions
   - `progress.ts`: the state of each incident at any minute
 - `src/state/sim.tsx` holds the clock, approvals, per-domain autonomy and the decision log.
 
@@ -71,6 +98,7 @@ Keys: `Space` play/pause · `→` next step or chapter · `A` approve · `Esc` c
   - Revenue per subscriber, derived from Q3 2026 results.
 - **Simulated:**
   - The network itself: site count, names, vendor regions and topology.
+  - The shift leads (Mariam and Khalid), the past incident reviews and the risk board.
   - Alarm volumes, the incidents, customers and change records.
   - System names in tool calls stand for the kinds of systems a NOC uses.
 

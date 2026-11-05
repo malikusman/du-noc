@@ -947,7 +947,7 @@ const subsea: Incident = {
   liveUntil: at("23:15"),
   closesOn: "c-verify",
   rawAlarms: 8,
-  impact: { subscribers: 900000, minutesAvoided: 30, slaCreditsAvoided: 0, ticketsAvoided: 140, visitsAvoided: 0 },
+  impact: { subscribers: 120000, minutesAvoided: 30, slaCreditsAvoided: 0, ticketsAvoided: 140, visitsAvoided: 0 },
   phases: [
     { from: "c-observe", to: "c-act", status: "watch", sites: ["FUJ-001"], subscribers: 0, links: [["H-FUJ", "L-FUJ"]] },
   ],

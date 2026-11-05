@@ -5,7 +5,7 @@ import { KbChips } from "../KbChips";
 import { AgentAvatar } from "../AgentAvatar";
 import { AGENTS, AUTONOMY } from "@/sim/agents";
 import type { StepState } from "@/sim/progress";
-import { clock } from "@/sim/time";
+import { clock, shiftLead } from "@/sim/time";
 import type { AutonomyLevel, Chip, Hypothesis, PlanOption, StepKind, ToolCall } from "@/sim/types";
 import { cx } from "@/lib/format";
 
@@ -159,7 +159,7 @@ export function StepCard({ state, previous, fresh, level, onApprove, onReject }:
                 <div className="max-w-md">
                   <p className="text-[14px] font-bold text-ink">Needs your approval{step.action.cost ? ` · ${step.action.cost}` : ""}</p>
                   <p className="mt-0.5 text-[13px] leading-5 text-ink-3">
-                    {level <= 1 ? `${AUTONOMY[level].name} mode: agents prepare the action and wait for you.` : step.action.approvalReason}
+                    {level <= 1 ? `${AUTONOMY[level].name} mode: agents prepare the action and wait for you.` : step.action.approvalReason} Sent to {shiftLead(state.at).name}, {shiftLead(state.at).role}.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -171,7 +171,7 @@ export function StepCard({ state, previous, fresh, level, onApprove, onReject }:
               <div className="mt-3 flex items-start gap-2 text-[13.5px] leading-5">
                 <X className="mt-0.5 h-4 w-4 shrink-0 text-bad" />
                 <div>
-                  <p className="text-ink">Rejected at {clock(state.at)}. The agents stopped here and handed the incident to the NOC engineers with their full reasoning.</p>
+                  <p className="text-ink">Rejected by {shiftLead(state.at).name} at {clock(state.at)}. The agents stopped here and handed the incident to the NOC engineers with their full reasoning.</p>
                   <p className="mt-1 text-[12px] text-ink-4">Reversible actions already taken stay in place.</p>
                 </div>
               </div>
@@ -183,7 +183,7 @@ export function StepCard({ state, previous, fresh, level, onApprove, onReject }:
                   <p className="mt-1 flex items-center gap-1.5 text-[12px] text-ink-4">
                     <ShieldCheck className="h-3.5 w-3.5" />
                     {state.approval && !state.approval.auto
-                      ? `Approved by the shift at ${clock(state.approval.at)}`
+                      ? `Approved by ${shiftLead(state.approval.at).name}, ${shiftLead(state.approval.at).role}, at ${clock(state.approval.at)}`
                       : state.policyApproved
                         ? "Cleared by policy in Autonomous mode"
                         : step.action.reversible ? "Ran on its own. Reversible and inside guardrails." : "Approved earlier"}

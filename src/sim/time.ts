@@ -45,6 +45,11 @@ export const SHIFTS = [
   { id: "evening", name: "Night shift", from: at("19:00"), to: DAY_LENGTH, handover: DAY_LENGTH, lead: "Shift lead (night)" },
 ] as const;
 
+/** Fictional shift leads for the story. */
+export function shiftLead(t: number) {
+  return t >= at("07:00") && t < at("19:00") ? { name: "Khalid", role: "day shift lead" } : { name: "Mariam", role: "night shift lead" };
+}
+
 export function shiftAt(t: number) {
   return SHIFTS.find((s) => t >= s.from && t < s.to) ?? SHIFTS[2];
 }

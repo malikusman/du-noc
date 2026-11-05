@@ -3,7 +3,7 @@ import { INCIDENTS, INCIDENT_BY_ID, incidentForStep } from "@/sim/incidents";
 import { allIncidentStates, availability, downLinks, routineDone, siteStatuses, subscribersAffected, type IncidentState } from "@/sim/progress";
 import { rawAlarms, uniqueEvents } from "@/sim/alarms";
 import { CHAPTERS } from "@/sim/story";
-import { DAY_LENGTH } from "@/sim/time";
+import { DAY_LENGTH, shiftLead } from "@/sim/time";
 import { AUTONOMY, DEFAULT_LEVELS, DOMAINS } from "@/sim/agents";
 import type { Approvals, AutonomyLevel, Domain, Levels, SiteStatus } from "@/sim/types";
 
@@ -15,6 +15,7 @@ export interface Decision {
   kind: "approved" | "rejected" | "autonomy";
   detail: string;
   incident?: string;
+  by?: string;
 }
 
 interface State {
@@ -111,7 +112,7 @@ function reducer(state: State, action: Action): State {
         ...state,
         approvals: { ...state.approvals, [action.stepId]: { at: state.t, auto: false, decision: action.decision } },
         roomPaused: false,
-        decisions: [...state.decisions, { t: state.t, kind: action.decision, detail: step?.title ?? action.stepId, incident: incident?.number }],
+        decisions: [...state.decisions, { t: state.t, kind: action.decision, detail: step?.title ?? action.stepId, incident: incident?.number, by: shiftLead(state.t).name }],
       };
     }
     case "open":

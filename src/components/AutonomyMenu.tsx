@@ -42,7 +42,7 @@ export function AutonomyMenu() {
               </button>
             );
           })}
-          <button type="button" onClick={() => { navigate("/policy"); setOpen(false); }} className="mt-1 flex w-full items-center gap-2 rounded-xl border-t border-line px-3 py-2.5 text-[12.5px] font-medium text-brand hover:bg-raised">
+          <button type="button" onClick={() => { navigate("/settings"); setOpen(false); }} className="mt-1 flex w-full items-center gap-2 rounded-xl border-t border-line px-3 py-2.5 text-[12.5px] font-medium text-brand hover:bg-raised">
             <SlidersHorizontal className="h-3.5 w-3.5" /> Set autonomy per domain
           </button>
         </div>

@@ -7,13 +7,12 @@ import { SeverityTag, StatusPill } from "@/components/Status";
 import { alarmsByHour, rawAlarms } from "@/sim/alarms";
 import { AED_PER_SUB_DAY, INCIDENTS, aedProtected } from "@/sim/incidents";
 import type { Approvals, Levels } from "@/sim/types";
-import { incidentState } from "@/sim/progress";
+import { incidentState, rootCauseMinutes } from "@/sim/progress";
 import { ROUTINE } from "@/sim/routine";
 import { SHIFTS, clock, duration } from "@/sim/time";
 import { useSim } from "@/state/sim";
 import { token } from "@/state/theme";
 import { aed, cx, num } from "@/lib/format";
-import { rootCauseMinutes } from "./Incidents";
 
 export default function Reports() {
   const { state } = useSim();

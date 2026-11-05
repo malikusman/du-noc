@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Inbox, Radio } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { AlarmRiver } from "@/components/AlarmRiver";
 import { Approvals, Feed } from "@/components/Feed";
 import { NetworkMap, type Callout, type MapRegion } from "@/components/NetworkMap";
@@ -50,12 +51,14 @@ export default function Operations() {
           {state.captions && (
             <motion.div key={chapter.kicker} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}
               className="glass absolute left-6 top-[132px] max-w-[440px] rounded-2xl p-4 shadow-xl">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">{chapter.kicker}</p>
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-ink-4">{chapter.act}</p>
+              <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">{chapter.kicker}</p>
               <p className="mt-1.5 text-[15px] font-medium leading-6 text-ink">{chapter.text}</p>
               {chapter.incident && (
                 <button type="button" onClick={() => { const i = incidents.find((x) => x.incident.id === chapter.incident); if (i && i.status !== "upcoming") openRoom(chapter.incident!); else if (i) seek(i.incident.trigger + 0.5); }}
                   className="mt-2 text-[12.5px] font-semibold text-brand hover:underline">Open the incident →</button>
               )}
+              {chapter.link && <Link to={chapter.link.to} className="mt-2 inline-block text-[12.5px] font-semibold text-brand hover:underline">{chapter.link.label}</Link>}
             </motion.div>
           )}
         </AnimatePresence>
