@@ -5,5 +5,10 @@ import path from "node:path";
 export default defineConfig({
   plugins: [react()],
   resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
-  server: { host: true, port: 5173 },
+  server: {
+    host: true,
+    port: 5173,
+    // The escalation service (npm run server) handles calls and WhatsApp.
+    proxy: { "/api": { target: process.env.ESCALATION_URL || "http://localhost:8787", changeOrigin: true } },
+  },
 });

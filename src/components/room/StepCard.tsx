@@ -1,11 +1,13 @@
 import { motion } from "framer-motion";
-import { Check, ShieldCheck, TerminalSquare, X, Zap } from "lucide-react";
+import { Check, MessageCircle, Phone, ShieldCheck, TerminalSquare, X, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { KbChips } from "../KbChips";
 import { AgentAvatar } from "../AgentAvatar";
 import { AGENTS, AUTONOMY } from "@/sim/agents";
 import type { StepState } from "@/sim/progress";
 import { clock, shiftLead } from "@/sim/time";
+import { CHANNELS, VIA_LABEL } from "@/sim/escalation";
+import { useEscalation } from "@/state/escalation";
 import type { AutonomyLevel, Chip, Hypothesis, PlanOption, StepKind, ToolCall } from "@/sim/types";
 import { cx } from "@/lib/format";
 
@@ -163,6 +165,7 @@ export function StepCard({ state, previous, fresh, level, onApprove, onReject }:
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <CallButton stepId={step.id} who={shiftLead(state.at).name} />
                   <button type="button" onClick={onReject} className="btn-line"><X className="h-4 w-4" /> Reject</button>
                   <button type="button" onClick={onApprove} className="btn-primary px-6 text-[15px]"><Zap className="h-4 w-4" /> Approve</button>
                 </div>
@@ -171,7 +174,7 @@ export function StepCard({ state, previous, fresh, level, onApprove, onReject }:
               <div className="mt-3 flex items-start gap-2 text-[13.5px] leading-5">
                 <X className="mt-0.5 h-4 w-4 shrink-0 text-bad" />
                 <div>
-                  <p className="text-ink">Rejected by {shiftLead(state.at).name} at {clock(state.at)}. The agents stopped here and handed the incident to the NOC engineers with their full reasoning.</p>
+                  <p className="text-ink">Rejected by {shiftLead(state.at).name} {VIA_LABEL[state.approval?.via ?? "app"]} at {clock(state.at)}. The agents stopped here and handed the incident to the NOC engineers with their full reasoning.</p>
                   <p className="mt-1 text-[12px] text-ink-4">Reversible actions already taken stay in place.</p>
                 </div>
               </div>
@@ -183,7 +186,7 @@ export function StepCard({ state, previous, fresh, level, onApprove, onReject }:
                   <p className="mt-1 flex items-center gap-1.5 text-[12px] text-ink-4">
                     <ShieldCheck className="h-3.5 w-3.5" />
                     {state.approval && !state.approval.auto
-                      ? `Approved by ${shiftLead(state.approval.at).name}, ${shiftLead(state.approval.at).role}, at ${clock(state.approval.at)}`
+                      ? `Approved by ${shiftLead(state.approval.at).name}, ${shiftLead(state.approval.at).role}, ${VIA_LABEL[state.approval.via ?? "app"]} at ${clock(state.approval.at)}`
                       : state.policyApproved
                         ? "Cleared by policy in Autonomous mode"
                         : step.action.reversible ? "Ran on its own. Reversible and inside guardrails." : "Approved earlier"}
@@ -195,5 +198,26 @@ export function StepCard({ state, previous, fresh, level, onApprove, onReject }:
         )}
       </div>
     </motion.article>
+  );
+}
+
+/** Reach the shift lead now, on the channel set in Settings. Shows the call's progress once it starts. */
+function CallButton({ stepId, who }: { stepId: string; who: string }) {
+  const { escalations, start, settings } = useEscalation();
+  const e = escalations[stepId];
+  const channel = CHANNELS.find((c) => c.id === settings.channel)!;
+  const Icon = settings.channel === "whatsapp-message" ? MessageCircle : Phone;
+  if (e && !["canceled", "failed", "unanswered"].includes(e.status)) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-good/40 bg-good/10 px-3 py-1.5 text-[12.5px] font-semibold text-good">
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-good" />
+        {e.status === "dialing" || e.status === "ringing" ? `Calling ${who}…` : e.status === "waiting-reply" || e.status === "messaging" ? `Sent to ${who}` : `On the line with ${who}`}
+      </span>
+    );
+  }
+  return (
+    <button type="button" onClick={() => start(stepId)} className="btn-line" title={channel.note}>
+      <Icon className="h-4 w-4 text-good" /> {settings.channel === "whatsapp-message" ? `Message ${who}` : `Call ${who}`}
+    </button>
   );
 }

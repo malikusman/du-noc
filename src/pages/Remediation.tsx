@@ -29,10 +29,12 @@ function stages(s: IncidentState): Stage[] {
   return [detect, diagnose, plan, approve, execute, verify];
 }
 
+const viaShort = (via?: string) => (via === "whatsapp-call" ? " · WhatsApp call" : via === "phone" ? " · phone" : via === "whatsapp-message" ? " · WhatsApp" : "");
+
 function how(x: StepState, level: number) {
   if (x.status === "waiting") return { text: level <= 1 ? `Waiting · ${AUTONOMY[level].short} mode` : "Waiting for approval", cls: "text-warn" };
-  if (x.status === "rejected") return { text: `Rejected by ${shiftLead(x.at).name}`, cls: "text-bad" };
-  if (x.approval && !x.approval.auto) return { text: `Approved by ${shiftLead(x.approval.at).name}`, cls: "text-good" };
+  if (x.status === "rejected") return { text: `Rejected by ${shiftLead(x.at).name}${viaShort(x.approval?.via)}`, cls: "text-bad" };
+  if (x.approval && !x.approval.auto) return { text: `Approved by ${shiftLead(x.approval.at).name}${viaShort(x.approval.via)}`, cls: "text-good" };
   if (x.policyApproved) return { text: "Cleared by policy", cls: "text-info" };
   return { text: "Ran on its own", cls: "text-ink-2" };
 }
@@ -105,7 +107,7 @@ export default function Remediation() {
                   {x.status === "done" && <p className="mt-1 text-[12px] text-ink-2">{x.step.action!.result}</p>}
                 </div>
                 <span className={cx("shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold", x.step.action!.reversible ? "bg-raised text-ink-3" : "bg-warn/12 text-warn")}>{x.step.action!.reversible ? "Reversible" : x.step.action!.cost ?? "Needs approval"}</span>
-                <span className={cx("w-40 shrink-0 text-right text-[12px] font-semibold", h.cls)}>{h.text}</span>
+                <span className={cx("w-52 shrink-0 text-right text-[12px] font-semibold", h.cls)}>{h.text}</span>
                 <span className="w-24 shrink-0 text-right text-[11px] text-ink-4">{AGENTS[x.step.agent].name}</span>
               </li>
             );

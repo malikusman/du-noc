@@ -3,3 +3,15 @@ services:
     build: .
     ports:
       - "5173:5173"
+    environment:
+      ESCALATION_URL: http://calls:8787
+    depends_on: [calls]
+  calls:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "8787:8787"

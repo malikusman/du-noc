@@ -724,7 +724,7 @@ const storm: Incident = {
   asset: "AMF/MME pool · IoT APN",
   trigger: at("18:45"),
   autoOpen: true,
-  liveUntil: at("18:56"),
+  liveUntil: at("19:03"),
   closesOn: "s-proof",
   rawAlarms: 96,
   impact: { subscribers: 310000, minutesAvoided: 25, slaCreditsAvoided: 0, ticketsAvoided: 22, visitsAvoided: 0 },
@@ -804,7 +804,7 @@ const storm: Incident = {
       chips: [{ label: "Attach rate", value: "610/s", tone: "good" }, { label: "Core CPU", value: "41%", tone: "good" }, { label: "Registration time", value: "Normal", tone: "good" }],
     },
     {
-      id: "s-hold", t: at("18:55"), agent: "liaison", kind: "act",
+      id: "s-hold", t: at("19:01"), agent: "liaison", kind: "act",
       title: "Ask the utility to pause its firmware rollout",
       action: { command: "notify(customer='ENT-UTL-0009', ops_team, ask='pause FW 3.2.1 rollout', evidence=attached)", system: "du Business portal", reversible: false, approvalReason: "This asks an enterprise customer to change their own operations.", result: "The utility's IoT team paused the rollout at 19:20 and opened a case with their module vendor." },
       feed: "Asked the utility to pause its meter firmware rollout",

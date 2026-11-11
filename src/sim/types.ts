@@ -157,6 +157,8 @@ export interface Approval {
   at: number;
   auto: boolean;
   decision?: "approved" | "rejected";
+  /** How the person decided: on the NOC screen, a phone or WhatsApp call, or a WhatsApp message. */
+  via?: string;
 }
 
 export type Approvals = Record<string, Approval>;

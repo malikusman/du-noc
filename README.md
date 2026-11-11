@@ -2,18 +2,19 @@
 
 A demo for du's NOC engineers showing how agentic AI runs inside a telecom Network Operations Centre. Nine agents watch a simulated du network. They turn alarm storms into single incidents and find root causes across RAN, transport, core, power and security. They act inside guardrails set per domain, ask an engineer when a step costs money or touches a customer, and close an incident only when the KPIs prove the fix.
 
-The research and plan are in [`docs/PLAN.md`](docs/PLAN.md). The story and talk track are in [`docs/STORY.md`](docs/STORY.md).
+The research and plan are in [`docs/PLAN.md`](docs/PLAN.md). The story and talk track are in [`docs/STORY.md`](docs/STORY.md). Calling the shift lead (WhatsApp call, phone call, WhatsApp message) is in [`docs/ESCALATION.md`](docs/ESCALATION.md).
 
 ## Run it
 
 ```bash
 npm install
-npm run dev            # http://localhost:5173
+npm run dev:all        # app on http://localhost:5173 + escalation service on :8787
 ```
 
-Docker: `docker compose up` (dev server) or `docker compose -f docker-compose.prod.yml up --build` (nginx on port 80).
-
-The app runs entirely in the browser and is deterministic, so it plays out the same way every time and works offline in the room.
+- `npm run dev` runs only the app. Calls then run in **Simulated** mode, on screen.
+- With Docker: `docker compose up` (dev) or `docker compose -f docker-compose.prod.yml up --build` (nginx on port 80 plus the escalation service).
+- The app is deterministic, so it plays out the same way every time and works offline in the room.
+- Real phone calls need a `.env`; see [`docs/ESCALATION.md`](docs/ESCALATION.md).
 
 ## The day: Thursday of GITEX week
 
@@ -51,7 +52,7 @@ The sidebar uses the same two groups and names as the NOC sidebar the du team ha
   - Analytics & Reports: shift handovers.
   - Executive Intelligence: the CTO's morning brief and "Ask the NOC".
   - Knowledge Base.
-  - Settings: autonomy per domain, confidence floor, alerts, team, integrations.
+  - Settings: autonomy per domain, confidence floor, **escalation (who gets called and how)**, alerts, team, integrations.
 
 ## Presenting (about 12 minutes)
 
@@ -86,6 +87,8 @@ Keys: `Space` play/pause · `→` next step or chapter · `A` approve · `Esc` c
   - `story.ts`: the three acts and the captions
   - `progress.ts`: the state of each incident at any minute
 - `src/state/sim.tsx` holds the clock, approvals, per-domain autonomy and the decision log.
+- `src/state/escalation.tsx` + `src/components/CallCard.tsx`: calling the shift lead when an agent needs a decision; `src/sim/escalation.ts` holds the call briefings.
+- `server/index.mjs` is the escalation service: Twilio phone and WhatsApp calls (spoken briefing, speech or keypad answer), Meta WhatsApp messages with buttons, the no-answer ladder, and live updates to the app.
 
 ## What is real and what is simulated
 

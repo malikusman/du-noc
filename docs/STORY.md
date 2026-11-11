@@ -28,7 +28,7 @@ Press **Space**.
 | Time | Beat | Say | Screen |
 |---|---|---|---|
 | 00:00–02:10 | Quiet hours | "Small faults get fixed without a ticket. Watch the counter climb." | Overview: the feed and the alarm river |
-| **02:14** | **412 alarms, one fibre cut** | "Last March the same duct was cut. 37 tickets, and 52 minutes to find the cause. Tonight: one ticket and three minutes, and 34 sites are back before anyone wakes up. The only thing Mariam has to decide is whether to send the night crew, and it goes to the GPS of the break." Press **A**. | The room opens by itself. Point at **Last time vs today** on the right |
+| **02:14** | **412 alarms, one fibre cut** | "Last March the same duct was cut. 37 tickets, and 52 minutes to find the cause. Tonight: one ticket and three minutes, and 34 sites are back before anyone wakes up. The only thing Mariam has to decide is whether to send the night crew, and she's at home asleep. So the agent calls her." The phone card rings (or a real phone in the room rings in Live mode). Let the briefing play, then answer **Approve** on the phone. | The room opens by itself. The call card shows the briefing. Point at **Last time vs today** |
 | 05:40 | Fog on the Abu Dhabi coast | "No alarm yet. The agents act on the forecast." | Caption → open the incident |
 
 **Show next:** **Incident Correlation**: the 412 alarms on the left, one incident on the right, and the checks that ruled out planned work and power.
@@ -48,7 +48,7 @@ Press **Space**.
 
 | Time | Beat | Say | Screen |
 |---|---|---|---|
-| **18:45** | **An attack, or a bug?** | "Last year a storm like this was treated as DDoS for 25 minutes and a whole IoT APN was blocked. Tonight Guardian proves it's 61,000 meters with a firmware bug. The agents slow the meters down, block nobody, and ask before contacting the customer." Try **Reject** to show the handover to engineers. | The room opens by itself, then **Security Operations** |
+| **18:45** | **An attack, or a bug?** | "Last year a storm like this was treated as DDoS for 25 minutes and a whole IoT APN was blocked. Tonight Guardian proves it's 61,000 meters with a firmware bug. The agents slow the meters down and block nobody. At 19:01, Mariam's first minute back on shift, the agent calls her to ask about contacting the customer." On the call, answer **Reject** to show the handover to engineers. | The room opens by itself, then **Security Operations** |
 | 19:00 | Handover | "Mariam is back. What's still open is on one page." | Reports |
 | **21:20** | **A cell that says it's fine** | "No alarm, but zero users at The Dubai Mall on a Thursday night. The agents wake it in five minutes, scan every indoor cell, and find a second one at DXB T3." | The room opens by itself |
 | 23:10 | Subsea | "A Red Sea fault. Europe traffic is rerouted, and care gets a script before the calls start." | Caption |

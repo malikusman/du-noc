@@ -8,6 +8,7 @@ import { siteLabel } from "@/sim/sites";
 import { clock } from "@/sim/time";
 import type { AgentId } from "@/sim/types";
 import { useSim } from "@/state/sim";
+import { useEscalation } from "@/state/escalation";
 import { cx } from "@/lib/format";
 
 interface Item {
@@ -65,6 +66,7 @@ export function Feed() {
 
 export function Approvals() {
   const { incidents, approve, reject, openRoom, state } = useSim();
+  const { escalations } = useEscalation();
   const waiting = incidents.flatMap((s) => s.steps.filter((x) => x.status === "waiting").map((x) => ({ s, x })));
   if (waiting.length === 0) {
     return (
@@ -81,6 +83,9 @@ export function Approvals() {
             <p className="flex items-center gap-2 text-[11px] text-ink-3"><SeverityTag severity={s.incident.severity} /> {s.incident.number} · waiting {Math.max(0, Math.round(state.t - x.at))} min</p>
             <p className="mt-1 text-[13px] font-semibold leading-[18px] text-ink">{x.step.title}</p>
             {x.step.action?.cost && <p className="mt-0.5 text-[11.5px] text-ink-3">{x.step.action.cost}</p>}
+            {escalations[x.step.id] && !["canceled", "failed", "unanswered"].includes(escalations[x.step.id].status) && (
+              <p className="mt-1 flex items-center gap-1.5 text-[11.5px] font-semibold text-good"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-good" />{escalations[x.step.id].channel === "whatsapp-message" ? "Sent on WhatsApp" : "On a call with"} {escalations[x.step.id].approver.name}</p>
+            )}
           </button>
           <div className="mt-2.5 flex gap-2">
             <button type="button" onClick={() => reject(x.step.id)} className="btn-line flex-1 py-1.5 text-[12.5px]">Reject</button>

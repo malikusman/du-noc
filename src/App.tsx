@@ -4,6 +4,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Sidebar } from "@/components/Sidebar";
 import { TopNav } from "@/components/TopNav";
 import { Intro } from "@/components/Intro";
+import { CallCard } from "@/components/CallCard";
 import { IncidentRoom } from "@/components/room/IncidentRoom";
 import { useDirectorKeys } from "@/hooks/useDirectorKeys";
 import { useSim } from "@/state/sim";
@@ -62,6 +63,7 @@ export default function App() {
       </div>
       <AnimatePresence>{state.room && <IncidentRoom key={state.room} />}</AnimatePresence>
       {pathname === "/operations" && <Intro />}
+      <CallCard />
     </div>
   );
 }

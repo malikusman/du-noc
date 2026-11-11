@@ -16,6 +16,7 @@ export interface Decision {
   detail: string;
   incident?: string;
   by?: string;
+  via?: string;
 }
 
 interface State {
@@ -41,7 +42,7 @@ type Action =
   | { type: "seek"; t: number }
   | { type: "levels"; value: Partial<Levels>; states: IncidentState[]; detail: string }
   | { type: "captions"; value?: boolean }
-  | { type: "decide"; stepId: string; decision: "approved" | "rejected" }
+  | { type: "decide"; stepId: string; decision: "approved" | "rejected"; via?: string }
   | { type: "open"; id: string }
   | { type: "close" }
   | { type: "roomPause"; value?: boolean }
@@ -106,13 +107,14 @@ function reducer(state: State, action: Action): State {
     case "captions":
       return { ...state, captions: action.value ?? !state.captions };
     case "decide": {
+      if (state.approvals[action.stepId] && !state.approvals[action.stepId].auto) return state;
       const incident = incidentForStep(action.stepId);
       const step = incident?.steps.find((s) => s.id === action.stepId);
       return {
         ...state,
-        approvals: { ...state.approvals, [action.stepId]: { at: state.t, auto: false, decision: action.decision } },
+        approvals: { ...state.approvals, [action.stepId]: { at: state.t, auto: false, decision: action.decision, via: action.via } },
         roomPaused: false,
-        decisions: [...state.decisions, { t: state.t, kind: action.decision, detail: step?.title ?? action.stepId, incident: incident?.number, by: shiftLead(state.t).name }],
+        decisions: [...state.decisions, { t: state.t, kind: action.decision, detail: step?.title ?? action.stepId, incident: incident?.number, by: shiftLead(state.t).name, via: action.via }],
       };
     }
     case "open":
@@ -155,8 +157,8 @@ interface SimContext {
   setAllLevels: (value: AutonomyLevel) => void;
   setLevel: (domain: Domain, value: AutonomyLevel) => void;
   toggleCaptions: (value?: boolean) => void;
-  approve: (stepId: string) => void;
-  reject: (stepId: string) => void;
+  approve: (stepId: string, via?: string) => void;
+  reject: (stepId: string, via?: string) => void;
   openRoom: (id: string) => void;
   closeRoom: () => void;
   pauseRoom: (value?: boolean) => void;
@@ -251,8 +253,8 @@ export function SimProvider({ children }: { children: ReactNode }) {
       dispatch({ type: "levels", value: { [domain]: v }, states: ref.current.incidents, detail: `${domain} set to ${AUTONOMY[v].name}` });
     }, []),
     toggleCaptions: useCallback((v?: boolean) => dispatch({ type: "captions", value: v }), []),
-    approve: useCallback((stepId: string) => dispatch({ type: "decide", stepId, decision: "approved" }), []),
-    reject: useCallback((stepId: string) => dispatch({ type: "decide", stepId, decision: "rejected" }), []),
+    approve: useCallback((stepId: string, via?: string) => dispatch({ type: "decide", stepId, decision: "approved", via }), []),
+    reject: useCallback((stepId: string, via?: string) => dispatch({ type: "decide", stepId, decision: "rejected", via }), []),
     openRoom: useCallback((id: string) => dispatch({ type: "open", id }), []),
     closeRoom: useCallback(() => dispatch({ type: "close" }), []),
     pauseRoom: useCallback((v?: boolean) => dispatch({ type: "roomPause", value: v }), []),

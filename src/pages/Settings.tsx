@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Page } from "@/components/Page";
+import { EscalationSettings } from "@/components/EscalationSettings";
 import { INTEGRATIONS, TEAM } from "@/sim/insight";
 import { shiftLead } from "@/sim/time";
 import { AUTONOMY, DOMAINS, DOMAIN_COPY } from "@/sim/agents";
@@ -17,7 +18,7 @@ export default function Policy() {
   return (
     <Page eyebrow="Operations · Settings" title="How much the agents may do, by domain"
       intro="Autonomy is set per domain, so the NOC can let the agents run transport reroutes on their own while every core change still needs an engineer. Levels map to the TM Forum autonomous-network scale."
-      right={<div className="flex gap-2">{AUTONOMY.map((a) => <button key={a.level} type="button" onClick={() => setAllLevels(a.level)} className="btn-line px-3 py-1.5 text-[12px]">All {a.short}</button>)}</div>}>
+      right={<div className="flex gap-2">{AUTONOMY.map((a) => <button key={a.level} type="button" onClick={() => setAllLevels(a.level)} className="btn-line whitespace-nowrap px-3 py-1.5 text-[12px]">All {a.short}</button>)}</div>}>
       <div className="card overflow-hidden">
         <table className="w-full text-[13px]">
           <thead>
@@ -53,6 +54,8 @@ export default function Policy() {
           </tbody>
         </table>
       </div>
+
+      <EscalationSettings />
 
       <div className="mt-6 grid grid-cols-2 gap-4">
         {AUTONOMY.map((a) => (
