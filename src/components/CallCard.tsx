@@ -13,6 +13,7 @@ const STATUS: Record<string, string> = {
   listening: "Listening for a decision",
   messaging: "Sending…",
   "waiting-reply": "Delivered · waiting for a tap",
+  "awaiting-noc": "Call ended · awaiting decision",
   decided: "Decided",
   unanswered: "No answer · left on the NOC screen",
   failed: "Couldn't connect",
@@ -45,8 +46,11 @@ function Card({ e }: { e: Escalation }) {
   const channel = CHANNELS.find((c) => c.id === e.channel)!;
   const message = e.channel === "whatsapp-message";
   const ringing = e.status === "dialing" || e.status === "ringing";
-  const canDecide = ["speaking", "listening", "waiting-reply"].includes(e.status) && !e.decision;
+  const canDecide = !e.decision && (e.trialTemplate ? e.status === "awaiting-noc" : ["speaking", "listening", "waiting-reply"].includes(e.status));
   const done = e.status === "decided" || e.status === "canceled";
+  const status = e.trialTemplate && e.status === "speaking" ? "Playing Twilio sample prompt" : STATUS[e.status] ?? e.status;
+  const mode = e.live ? ((e.dryRun ?? backend.dryRun) ? "Live · dry run" : e.trialTemplate ? "Live · Twilio trial" : "Live") : "Simulated";
+  const failure = e.status === "failed" ? e.log[e.log.length - 1] : undefined;
   const scroller = useRef<HTMLDivElement>(null);
   const [since, setSince] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -74,7 +78,7 @@ function Card({ e }: { e: Escalation }) {
         {message ? <MessageCircle className="h-3.5 w-3.5 text-good" /> : <Phone className="h-3.5 w-3.5 text-good" />}
         <span className="font-semibold text-ink-2">{channel.name}</span>
         <span className="text-ink-4">· {incident.number}</span>
-        <span className={cx("ml-auto rounded-full px-2 py-0.5 font-semibold", e.live ? "bg-bad/15 text-bad" : "bg-raised text-ink-3")}>{e.live ? (backend.dryRun ? "Live · dry run" : "Live") : "Simulated"}</span>
+        <span className={cx("ml-auto rounded-full px-2 py-0.5 font-semibold", e.live ? "bg-bad/15 text-bad" : "bg-raised text-ink-3")}>{mode}</span>
         {done && <button type="button" onClick={() => dismiss(e.stepId)} className="rounded-full p-1 text-ink-4 hover:bg-raised hover:text-ink" aria-label="Close"><X className="h-3.5 w-3.5" /></button>}
       </div>
 
@@ -85,18 +89,25 @@ function Card({ e }: { e: Escalation }) {
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[16px] font-bold leading-5 text-ink">{e.approver.name}</p>
-          <p className="truncate text-[12px] text-ink-3">{e.approver.role}{e.live && backend.contacts[e.approver.key] ? ` · ${backend.contacts[e.approver.key]}` : ""}</p>
+          <p className="truncate text-[12px] text-ink-3">{e.approver.role}{e.live && e.recipient ? ` · ${e.recipient}` : ""}</p>
         </div>
         <div className="text-right">
           <p className={cx("text-[11.5px] font-semibold", e.decision === "approved" ? "text-good" : e.decision === "rejected" ? "text-bad" : "text-ink-2")}>
-            {e.decision ? `${e.decision === "approved" ? "Approved" : "Rejected"} ${VIA_LABEL[e.via ?? "app"] ?? ""}` : STATUS[e.status] ?? e.status}
+            {e.decision ? `${e.decision === "approved" ? "Approved" : "Rejected"} ${VIA_LABEL[e.via ?? "app"] ?? ""}` : status}
           </p>
           {!message && since !== null && <p className="font-mono text-[11px] text-ink-4">{timer}</p>}
         </div>
       </div>
 
       <div ref={scroller} className="max-h-[230px] min-h-[64px] space-y-2 overflow-y-auto border-t border-line bg-raised/50 px-4 py-3">
-        {e.transcript.length === 0 && <p className="text-[12px] text-ink-4">{message ? "Sending the briefing with Approve, Reject and Call me buttons…" : `The agent is calling ${e.approver.name} with a spoken briefing on this incident.`}</p>}
+        {failure && <p className="text-[12px] text-bad">{failure}</p>}
+        {!failure && e.transcript.length === 0 && (
+          <p className="text-[12px] text-ink-4">
+            {e.trialTemplate
+              ? "The phone call plays Twilio’s Speech Recognition sample. Approve or reject the incident in the NOC."
+              : message ? "Sending the briefing with Approve, Reject and Call me buttons…" : `The agent is calling ${e.approver.name} with a spoken briefing on this incident.`}
+          </p>
+        )}
         {e.transcript.map((l, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className={cx("flex", l.who === "human" ? "justify-end" : l.who === "system" ? "justify-center" : "justify-start")}>
             {l.who === "system" ? (
@@ -114,7 +125,7 @@ function Card({ e }: { e: Escalation }) {
       <div className="px-4 pb-4 pt-3">
         {canDecide ? (
           <>
-            <p className="mb-2 text-[11px] text-ink-4">{e.live ? `${e.approver.name} can say “approve” or “reject”, press 1 or 2, or decide here:` : `Answer as ${e.approver.name}:`}</p>
+            <p className="mb-2 text-[11px] text-ink-4">{e.trialTemplate ? "Record the incident decision here." : e.live ? `${e.approver.name} can say “approve” or “reject”, press 1 or 2, or decide here:` : `Answer as ${e.approver.name}:`}</p>
             <div className="flex gap-2">
               <button type="button" onClick={() => answer(e.stepId, "rejected")} className="btn-line flex-1"><X className="h-4 w-4" /> Reject</button>
               <button type="button" onClick={() => answer(e.stepId, "approved")} className="btn flex-1 bg-good text-white hover:brightness-110"><Check className="h-4 w-4" /> Approve</button>

@@ -25,6 +25,33 @@ If nobody answers, the escalation moves down a ladder:
 
 Switch modes, channel and auto-call delay in **Settings → When a person is needed**.
 
+## Twilio Voice trial
+
+Set `TWILIO_TRIAL_VOICE=true` along with `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and the trial **From** number in `TWILIO_VOICE_FROM`. Add the recipients in the Twilio Console under **Voice → Try out Voice** and verify them there. Set `CONTACT_GENERATOR_DISPATCH` for a separate recipient on the 11:35 generator dispatch. If Twilio assigns that recipient a different **From** number, set it in `TWILIO_GENERATOR_VOICE_FROM`.
+
+Select **Live → Phone call**. The phone plays Twilio's Speech Recognition sample and the decision is recorded on the NOC screen. This mode can leave `PUBLIC_URL` blank. Full incident briefings and WhatsApp Business Calling use the webhook setup below. [Twilio Voice trial setup](https://www.twilio.com/docs/usage/trials/try-out-voice)
+
+## Deploying the demo on DigitalOcean
+
+Check out the feature branch on the droplet, then create a private `.env` beside `docker-compose.prod.yml` if one does not exist. The Compose file passes these settings to the `calls` service at runtime.
+
+```sh
+git fetch origin
+git switch feat/twilio-demo-escalation
+git pull --ff-only
+[ -f .env ] || (umask 077; cp .env.example .env)
+chmod 600 .env
+```
+
+Fill in the real provider values and recipient numbers on the droplet. Keep `ESCALATION_PORT=8787` and leave `ESCALATION_HOST` blank so the app container can reach the service. Use the trial settings above for regular phone calls, or set `PUBLIC_URL` to the deployed HTTPS origin when using provider webhooks. The app and its `/api/` can initiate real calls, so restrict them to authorized demo users via a private network or an authenticated reverse proxy before setting live credentials. Allow the provider webhook routes separately if needed.
+
+```sh
+docker compose -f docker-compose.prod.yml up -d --build
+curl --fail http://localhost/api/escalation/health
+```
+
+The repository's existing **Deploy** workflow pulls `main`. Use the commands above for this separate branch.
+
 ## The story the voice agent tells
 
 Each decision in the demo has a hand-written briefing in `src/sim/escalation.ts`. Each is about 30 seconds, built the same way:

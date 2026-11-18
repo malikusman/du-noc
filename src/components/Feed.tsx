@@ -84,7 +84,7 @@ export function Approvals() {
             <p className="mt-1 text-[13px] font-semibold leading-[18px] text-ink">{x.step.title}</p>
             {x.step.action?.cost && <p className="mt-0.5 text-[11.5px] text-ink-3">{x.step.action.cost}</p>}
             {escalations[x.step.id] && !["canceled", "failed", "unanswered"].includes(escalations[x.step.id].status) && (
-              <p className="mt-1 flex items-center gap-1.5 text-[11.5px] font-semibold text-good"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-good" />{escalations[x.step.id].channel === "whatsapp-message" ? "Sent on WhatsApp" : "On a call with"} {escalations[x.step.id].approver.name}</p>
+              <p className="mt-1 flex items-center gap-1.5 text-[11.5px] font-semibold text-good"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-good" />{escalations[x.step.id].status === "awaiting-noc" ? "Decision pending in NOC" : `${escalations[x.step.id].channel === "whatsapp-message" ? "Sent on WhatsApp to" : "On a call with"} ${escalations[x.step.id].approver.name}`}</p>
             )}
           </button>
           <div className="mt-2.5 flex gap-2">
