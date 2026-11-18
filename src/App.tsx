@@ -20,6 +20,7 @@ import Prevention from "@/pages/Prevention";
 import Revenue from "@/pages/Revenue";
 import Remediation from "@/pages/Remediation";
 import Executive from "@/pages/Executive";
+import Command from "@/pages/Command";
 
 export default function App() {
   const { pathname } = useLocation();
@@ -44,6 +45,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/operations" replace />} />
             <Route path="/operations" element={<Operations />} />
+            <Route path="/command" element={<Command />} />
             <Route path="/prevention" element={<Prevention />} />
             <Route path="/correlation" element={<Correlation />} />
             <Route path="/revenue" element={<Revenue />} />

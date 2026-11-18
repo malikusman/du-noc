@@ -6,7 +6,7 @@ import { SeverityTag } from "./Status";
 import { ROUTINE } from "@/sim/routine";
 import { siteLabel } from "@/sim/sites";
 import { clock } from "@/sim/time";
-import type { AgentId } from "@/sim/types";
+import type { AgentId, Domain } from "@/sim/types";
 import { useSim } from "@/state/sim";
 import { useEscalation } from "@/state/escalation";
 import { cx } from "@/lib/format";
@@ -19,6 +19,7 @@ interface Item {
   sub: string;
   incident?: string;
   routine?: boolean;
+  domain: Domain;
 }
 
 export function useFeed(limit = 40): Item[] {
@@ -28,12 +29,12 @@ export function useFeed(limit = 40): Item[] {
     for (const s of incidents) {
       for (const step of s.steps) {
         if (step.status === "done" && step.step.feed) {
-          items.push({ key: step.step.id, t: step.at, agent: step.step.agent, text: step.step.feed, sub: `${s.incident.number} · ${s.incident.place}`, incident: s.incident.id });
+          items.push({ key: step.step.id, t: step.at, agent: step.step.agent, text: step.step.feed, sub: `${s.incident.number} · ${s.incident.place}`, incident: s.incident.id, domain: s.incident.domain });
         }
       }
     }
     for (const r of ROUTINE) {
-      if (r.t + r.durationMin <= state.t) items.push({ key: r.id, t: r.t + r.durationMin, agent: r.agent, text: `${r.kind}: ${r.action.charAt(0).toLowerCase()}${r.action.slice(1)}`, sub: `${siteLabel(r.siteId)} · no ticket`, routine: true });
+      if (r.t + r.durationMin <= state.t) items.push({ key: r.id, t: r.t + r.durationMin, agent: r.agent, text: `${r.kind}: ${r.action.charAt(0).toLowerCase()}${r.action.slice(1)}`, sub: `${siteLabel(r.siteId)} · no ticket`, routine: true, domain: r.domain });
     }
     return items.sort((a, b) => b.t - a.t).slice(0, limit);
   }, [incidents, state.t, limit]);

@@ -1,4 +1,4 @@
-import { BarChart3, BookOpen, Bot, Brain, ChevronsLeft, ChevronsRight, DollarSign, Home, Link2, MessageSquareText, Radio, Settings, Shield, TrendingDown } from "lucide-react";
+import { BarChart3, BookOpen, LayoutDashboard, Bot, Brain, ChevronsLeft, ChevronsRight, DollarSign, Home, Link2, MessageSquareText, Radio, Settings, Shield, TrendingDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { Logo } from "./Logo";
@@ -7,6 +7,10 @@ import { cx } from "@/lib/format";
 
 /** Same groups and names as the NOC sidebar the du team has already seen. */
 export const NAV_GROUPS = [
+  {
+    label: "Admin",
+    items: [{ to: "/command", label: "Command Center", icon: LayoutDashboard }],
+  },
   {
     label: "Intelligence",
     items: [

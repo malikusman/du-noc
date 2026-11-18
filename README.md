@@ -275,7 +275,13 @@ AED 4.4 comes from du's Q3 2026 revenue (AED 4,145m) over 92 days and 10.26m sub
 
 ## 5. The screens
 
-The sidebar uses the same groups and names as the NOC sidebar the du team has already seen.
+The sidebar uses the same groups and names as the NOC sidebar the du team has already seen, plus an **Admin** group for executives.
+
+**Admin**
+
+| Screen | What it shows |
+|---|---|
+| **Command Center** | The executive dashboard, live as the day plays. Its parts are described below the screen tables. |
 
 **Intelligence**
 
@@ -298,6 +304,36 @@ The sidebar uses the same groups and names as the NOC sidebar the du team has al
 | **Executive Intelligence** | The CTO's Friday 06:00 brief, and **Ask the NOC**: seven questions answered from today's record, with the incidents they used. |
 | **Knowledge Base** | Methods of procedure, policies, change records, vendor bulletins, past incidents and rules learned today, with which agent cited what. |
 | **Settings** | Autonomy per domain, the confidence floor, **who gets called and how**, alert channels, the team on shift and connected systems. |
+
+### The Command Center (executive dashboard)
+
+Added after the first demo, when du asked for a dashboard for the executive admin. It answers three questions on one screen: are the business outcomes being met, what did the agents do on their own, and which decisions need me?
+
+- **Headline tiles:**
+  - Auto-resolved: the share of actions with no person involved.
+  - Mean time to repair.
+  - Intents met (for example 6 of 7).
+  - Revenue leakage: subscriber revenue actually lost to outages today, as a share of du's daily revenue.
+  - Decisions waiting.
+- **Business intents:**
+  - Outcomes in plain words, each with a target and a live status: Met, At risk or Breached.
+  - Example targets: "Gold SLA banks stay under 25 ms", "Card payments at GITEX succeed at least 99.5% of the time", "Critical sites never go off air".
+  - Each one moves with the incident that touched it.
+  - **Add intent:** type a goal such as "Keep enterprise uplink above 50 Mbps". The Planner agent turns it into a metric, a target, a scope and a domain, with the guardrails that apply, and starts watching it.
+  - This follows intent-based operations as in TM Forum's Intent Management API (TMF921). Customer-facing intents can be exposed through the CAMARA Quality on Demand API.
+- **Agent activity:** the latest actions, labelled by domain.
+- **Needs human approval:**
+  - *Right now:* actions waiting on the shift, with confidence, cost, and whether the shift lead is already on a call. Approve or Hold (Hold hands it to an engineer).
+  - *For sign-off this week:* investments and policies the agents recommend from what they learned today.
+- **Domain health:** a score per domain that drops while an incident in it is open and recovers once the fix is proven.
+- **Value delivered today:**
+  - Revenue protected.
+  - Subscriber-hours protected.
+  - Tickets the agents didn't need.
+  - Field visits avoided.
+  - A link to the CTO brief.
+
+The intent logic is in `src/sim/intents.ts` and the screen in `src/pages/Command.tsx`. In the demo, typed intents are parsed by simple rules so the result is predictable on stage. In production the Planner would use a language model and the live KPI feeds.
 
 ---
 

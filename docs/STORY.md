@@ -60,6 +60,11 @@ Press **Space**.
 
 Then use **Ask the NOC**: "Was the evening surge an attack?" or "What needs a decision right now?" Each answer cites its incidents.
 
+**Then the Command Center** (Admin in the sidebar), for the executives in the room:
+> "This is the screen for whoever sets the NOC's goals. Seven business intents, in plain words, each live. Here's the one the bank incident touched, back to Met. Auto-resolved is above 90 percent, and these are the four decisions that needed a person today."
+
+Type an intent live, for example "Keep enterprise uplink above 50 Mbps in Abu Dhabi", and show the Planner turning it into a metric, a target and guardrails.
+
 **Close on Settings:**
 > "Autonomy is set per domain. You decide how far the agents go, domain by domain, along the same TM Forum levels as du's L4 roadmap."
 
