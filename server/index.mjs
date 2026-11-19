@@ -15,6 +15,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import express from "express";
 
@@ -26,8 +27,16 @@ loadEnv(path.join(here, "..", ".env"));
 const env = (k, d = "") => (process.env[k] ?? d).trim();
 const CONFIG = {
   port: Number(env("ESCALATION_PORT", "8787")),
+  host: env("ESCALATION_HOST") || undefined,
   publicUrl: env("PUBLIC_URL").replace(/\/$/, ""),
-  twilio: { sid: env("TWILIO_ACCOUNT_SID"), token: env("TWILIO_AUTH_TOKEN"), voiceFrom: env("TWILIO_VOICE_FROM"), whatsappFrom: env("TWILIO_WHATSAPP_FROM") },
+  twilio: {
+    sid: env("TWILIO_ACCOUNT_SID"),
+    token: env("TWILIO_AUTH_TOKEN"),
+    voiceFrom: env("TWILIO_VOICE_FROM"),
+    generatorVoiceFrom: env("TWILIO_GENERATOR_VOICE_FROM"),
+    whatsappFrom: env("TWILIO_WHATSAPP_FROM"),
+    trialVoice: env("TWILIO_TRIAL_VOICE") === "true",
+  },
   meta: { token: env("META_WA_TOKEN"), phoneNumberId: env("META_WA_PHONE_NUMBER_ID"), verifyToken: env("META_WA_VERIFY_TOKEN"), appSecret: env("META_APP_SECRET"), graph: env("META_GRAPH_VERSION", "v21.0") },
   voice: env("TTS_VOICE", "Polly.Amy-Neural"),
   language: env("TTS_LANGUAGE", "en-GB"),
@@ -37,11 +46,12 @@ const CONFIG = {
     "day-lead": env("CONTACT_DAY_LEAD"),
     backup: env("CONTACT_BACKUP"),
   },
+  generatorDispatchContact: env("CONTACT_GENERATOR_DISPATCH"),
   validateSignatures: env("VALIDATE_SIGNATURES", "true") !== "false",
 };
 
 const CAN = {
-  phone: Boolean(CONFIG.twilio.sid && CONFIG.twilio.token && CONFIG.twilio.voiceFrom && CONFIG.publicUrl),
+  phone: Boolean(CONFIG.twilio.sid && CONFIG.twilio.token && CONFIG.twilio.voiceFrom && (CONFIG.twilio.trialVoice || CONFIG.publicUrl)),
   "whatsapp-call": Boolean(CONFIG.twilio.sid && CONFIG.twilio.token && CONFIG.twilio.whatsappFrom && CONFIG.publicUrl),
   "whatsapp-message": Boolean(CONFIG.meta.token && CONFIG.meta.phoneNumberId),
 };
@@ -69,6 +79,7 @@ function publicView(e) {
     attempt: e.attempt,
     to: mask(e.to),
     dryRun: e.dryRun,
+    trialTemplate: e.trialTemplate,
     decision: e.decision,
     via: e.via ?? null,
     heard: e.heard,
@@ -97,6 +108,7 @@ app.get("/api/escalation/config", (_req, res) => {
   res.json({
     channels: CAN,
     dryRun: !CAN.phone && !CAN["whatsapp-call"] && !CAN["whatsapp-message"],
+    trialVoice: CAN.phone && CONFIG.twilio.trialVoice,
     contacts: Object.fromEntries(Object.entries(CONFIG.contacts).map(([k, v]) => [k, mask(v)])),
     publicUrl: Boolean(CONFIG.publicUrl),
   });
@@ -125,7 +137,7 @@ app.post("/api/escalations", async (req, res) => {
   const existing = [...escalations.values()].find((e) => e.stepId === b.stepId && !e.decision && !isOver(e.status));
   if (existing) return res.json(publicView(existing));
 
-  const ladder = buildLadder(b.channel, b.approver.key);
+  const ladder = buildLadder(b.channel, b.approver.key, b.stepId);
   const e = {
     id: crypto.randomUUID(),
     stepId: String(b.stepId),
@@ -138,6 +150,7 @@ app.post("/api/escalations", async (req, res) => {
     to: ladder[0].to,
     status: "queued",
     dryRun: !ladder[0].live,
+    trialTemplate: ladder[0].live && b.channel === "phone" && CONFIG.twilio.trialVoice,
     decision: null,
     heard: null,
     log: [],
@@ -254,10 +267,17 @@ app.post("/meta/webhook", (req, res) => {
 
 /* ─────────────────────────── flow ─────────────────────────── */
 
-function buildLadder(channel, leadKey) {
+function buildLadder(channel, leadKey, stepId) {
   const lead = CONFIG.contacts[leadKey] || "";
   const backup = CONFIG.contacts.backup || "";
-  const steps = [{ channel, to: lead, live: CAN[channel] && Boolean(lead) }];
+  // The second demo call is the daytime generator dispatch. Other incidents use their shift lead.
+  const generatorCall = channel === "phone" && leadKey === "day-lead" && stepId === "w-dispatch";
+  const primary = (generatorCall && CONFIG.generatorDispatchContact) || lead;
+  const steps = [{ channel, to: primary, live: CAN[channel] && Boolean(primary) }];
+  if (generatorCall && CONFIG.twilio.generatorVoiceFrom) {
+    steps[0].voiceFrom = CONFIG.twilio.generatorVoiceFrom;
+  }
+  if (channel === "phone" && CONFIG.twilio.trialVoice) return steps;
   if (channel !== "whatsapp-message" && backup) steps.push({ channel, to: backup, live: CAN[channel], who: "backup" });
   steps.push({ channel: "whatsapp-message", to: lead, live: CAN["whatsapp-message"] && Boolean(lead) });
   return steps;
@@ -268,6 +288,7 @@ async function runAttempt(e) {
   e.channel = step.channel;
   e.to = step.to;
   e.dryRun = !step.live;
+  e.trialTemplate = step.live && step.channel === "phone" && CONFIG.twilio.trialVoice;
   const who = step.who === "backup" ? "the backup engineer" : e.approver.name;
   if (e.dryRun) return dryRun(e, who);
   if (step.channel === "whatsapp-message") {
@@ -278,6 +299,11 @@ async function runAttempt(e) {
   update(e, { status: "dialing" }, `${step.channel === "whatsapp-call" ? "WhatsApp call" : "Phone call"} to ${who}`);
   const call = await twilioCall(e, step);
   e.callSid = call.sid;
+  if (e.trialTemplate) {
+    if (!/^CA[a-f0-9]{32}$/i.test(e.callSid ?? "")) throw new Error("Twilio did not return a call ID.");
+    if (e.decision || e.status === "canceled") return twilioHangup(e.callSid).catch(() => {});
+    await trackTrialCall(e);
+  }
 }
 
 /** No credentials: act out the call states so the app shows the same journey. The decision comes from the app. */
@@ -298,8 +324,9 @@ function next(e) {
 
 /** A provider error moves down the ladder instead of stopping the escalation. */
 function fail(e, err) {
+  if (e.decision || e.status === "canceled") return;
   update(e, { status: "failed" }, `Failed: ${err.message}`);
-  next(e);
+  if (!e.trialTemplate) next(e);
 }
 
 function decide(e, decision, via, heard) {
@@ -307,6 +334,7 @@ function decide(e, decision, via, heard) {
   update(e, { decision, status: "decided", heard: heard ?? e.heard, via }, `${e.approver.name} ${decision === "approved" ? "approved" : "rejected"} by ${label(via)}${heard ? `: "${heard}"` : ""}`);
   // Decided on the NOC screen while the phone is still ringing or talking: close the call politely.
   if (via === "app" && e.callSid && !e.dryRun) {
+    if (e.trialTemplate) return twilioHangup(e.callSid).catch(() => {});
     const words = `${e.approver.name} has already ${decision} this on the NOC screen. Goodbye.`;
     twilioUpdate(e.callSid, { Twiml: `<Response><Say ${voiceAttrs()}>${xml(words)}</Say><Hangup/></Response>` }).catch(() => {});
   }
@@ -314,22 +342,30 @@ function decide(e, decision, via, heard) {
 
 /* ─────────────────────────── providers ─────────────────────────── */
 
+const TWILIO_CALLS = `https://api.twilio.com/2010-04-01/Accounts/${CONFIG.twilio.sid}/Calls`;
+const TWILIO_AUTH = "Basic " + Buffer.from(`${CONFIG.twilio.sid}:${CONFIG.twilio.token}`).toString("base64");
+const TRIAL_VOICE_TEMPLATE = "https://webhooks.twilio.com/v1/Voice/Template/voice_speech_recognition";
+
 async function twilioCall(e, step) {
   const to = step.channel === "whatsapp-call" ? `whatsapp:${step.to}` : step.to;
-  const from = step.channel === "whatsapp-call" ? CONFIG.twilio.whatsappFrom : CONFIG.twilio.voiceFrom;
+  const from = step.channel === "whatsapp-call"
+    ? CONFIG.twilio.whatsappFrom
+    : step.voiceFrom || CONFIG.twilio.voiceFrom;
   const form = new URLSearchParams({
     To: to,
     From: from,
-    Url: `${CONFIG.publicUrl}/twilio/voice/${e.id}`,
-    Method: "POST",
-    StatusCallback: `${CONFIG.publicUrl}/twilio/status/${e.id}`,
-    StatusCallbackMethod: "POST",
-    Timeout: String(CONFIG.ringSeconds),
+    Url: e.trialTemplate ? TRIAL_VOICE_TEMPLATE : `${CONFIG.publicUrl}/twilio/voice/${e.id}`,
   });
-  for (const ev of ["initiated", "ringing", "answered", "completed"]) form.append("StatusCallbackEvent", ev);
-  const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${CONFIG.twilio.sid}/Calls.json`, {
+  if (!e.trialTemplate) {
+    form.set("Method", "POST");
+    form.set("StatusCallback", `${CONFIG.publicUrl}/twilio/status/${e.id}`);
+    form.set("StatusCallbackMethod", "POST");
+    form.set("Timeout", String(CONFIG.ringSeconds));
+    for (const ev of ["initiated", "ringing", "answered", "completed"]) form.append("StatusCallbackEvent", ev);
+  }
+  const r = await fetch(`${TWILIO_CALLS}.json`, {
     method: "POST",
-    headers: { Authorization: "Basic " + Buffer.from(`${CONFIG.twilio.sid}:${CONFIG.twilio.token}`).toString("base64"), "Content-Type": "application/x-www-form-urlencoded" },
+    headers: { Authorization: TWILIO_AUTH, "Content-Type": "application/x-www-form-urlencoded" },
     body: form,
   });
   const body = await r.json().catch(() => ({}));
@@ -337,12 +373,47 @@ async function twilioCall(e, step) {
   return body;
 }
 
+/** Track the trial call without adding parameters to Twilio's create-call request. */
+async function trackTrialCall(e) {
+  const deadline = Date.now() + 12 * 60 * 1000;
+  const active = () => !e.decision && e.status !== "canceled";
+  let readFailures = 0;
+  while (active() && Date.now() < deadline) {
+    await delay(2500);
+    if (!active()) return;
+    let call;
+    try {
+      const response = await fetch(`${TWILIO_CALLS}/${e.callSid}.json`, {
+        headers: { Authorization: TWILIO_AUTH },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!response.ok) throw new Error(`Twilio HTTP ${response.status}`);
+      call = await response.json();
+      readFailures = 0;
+    } catch {
+      if (++readFailures >= 3 && active()) {
+        return update(e, { status: "awaiting-noc" }, "Twilio accepted the call. Call status is unavailable.");
+      }
+      continue;
+    }
+    if (!active()) return;
+    if (call.status === "completed") return update(e, { status: "awaiting-noc" }, "Trial call ended. Decide on the NOC screen.");
+    if (call.status === "failed") return update(e, { status: "failed" }, "Twilio reported that the trial call failed.");
+    if (["busy", "no-answer", "canceled"].includes(call.status)) {
+      return update(e, { status: "unanswered" }, label(call.status));
+    }
+    if (call.status === "ringing" && e.status === "dialing") update(e, { status: "ringing" });
+    if (call.status === "in-progress" && e.status !== "speaking") update(e, { status: "speaking" });
+  }
+  if (active()) update(e, { status: "awaiting-noc" }, "Trial call status tracking ended. Decide on the NOC screen.");
+}
+
 const twilioHangup = (sid) => twilioUpdate(sid, { Status: "completed" });
 
 async function twilioUpdate(sid, fields) {
-  await fetch(`https://api.twilio.com/2010-04-01/Accounts/${CONFIG.twilio.sid}/Calls/${sid}.json`, {
+  await fetch(`${TWILIO_CALLS}/${sid}.json`, {
     method: "POST",
-    headers: { Authorization: "Basic " + Buffer.from(`${CONFIG.twilio.sid}:${CONFIG.twilio.token}`).toString("base64"), "Content-Type": "application/x-www-form-urlencoded" },
+    headers: { Authorization: TWILIO_AUTH, "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams(fields),
   });
 }
@@ -394,7 +465,7 @@ function twiml(res, inner) {
 }
 const voiceAttrs = () => `voice="${CONFIG.voice}" language="${CONFIG.language}"`;
 const xml = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-const isOver = (s) => ["decided", "done", "canceled", "unanswered", "failed"].includes(s);
+const isOver = (s) => ["awaiting-noc", "decided", "done", "canceled", "unanswered", "failed"].includes(s);
 const label = (s) => ({ "no-answer": "No answer", busy: "Busy", failed: "Call failed", canceled: "Canceled", completed: "Call ended without a decision", phone: "phone call", "whatsapp-call": "WhatsApp call", "whatsapp-message": "WhatsApp message", app: "the NOC screen" }[s] ?? s);
 const mask = (n) => (n ? `${n.slice(0, 4)} ••• ${n.slice(-3)}` : "");
 const safeEqual = (a, b) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
@@ -428,8 +499,8 @@ function loadEnv(file) {
   }
 }
 
-app.listen(CONFIG.port, () => {
+app.listen(CONFIG.port, CONFIG.host, () => {
   const live = Object.entries(CAN).filter(([, v]) => v).map(([k]) => k);
   console.log(`Escalation service on :${CONFIG.port} · ${live.length ? `live: ${live.join(", ")}` : "dry run (no credentials in .env)"}`);
-  if (live.length && !CONFIG.publicUrl) console.log("PUBLIC_URL is not set, so Twilio cannot reach the call webhooks.");
+  if (CAN["whatsapp-message"] && !CONFIG.publicUrl) console.log("Set PUBLIC_URL so Meta can reach the webhooks.");
 });

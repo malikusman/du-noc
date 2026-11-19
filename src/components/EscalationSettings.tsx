@@ -14,6 +14,18 @@ export function EscalationSettings() {
       ? "Escalation service online · dry run: no call credentials in .env yet, so calls are acted out."
       : `Escalation service online · live: ${liveChannels.join(", ")}`;
   const channelName = CHANNELS.find((c) => c.id === settings.channel)!.name;
+  const trialVoice = backend.online && backend.trialVoice && settings.mode === "live" && settings.channel === "phone";
+  const ladder = trialVoice
+    ? [
+        { n: "1", t: "Shift lead · Twilio trial call", d: "Plays Twilio’s Speech Recognition sample" },
+        { n: "2", t: "NOC screen", d: "Approve or reject the incident here" },
+      ]
+    : [
+        { n: "1", t: `Shift lead · ${channelName}`, d: "Rings for 25 seconds" },
+        { n: "2", t: `Backup engineer · ${channelName}`, d: "Same briefing, same choices" },
+        { n: "3", t: "Shift lead · WhatsApp message", d: "Approve, Reject or Call me buttons" },
+        { n: "4", t: "NOC screen", d: "Stays in the approvals inbox; safe actions already taken stay in place" },
+      ];
 
   return (
     <div className="mt-6 card overflow-hidden">
@@ -25,18 +37,21 @@ export function EscalationSettings() {
       </div>
       <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-6 p-5">
         <div>
-          <p className="text-[13px] leading-5 text-ink-3">When an agent stops for approval, it reaches the shift lead wherever they are. A voice agent reads the briefing and listens for “approve” or “reject”. The decision lands back here, with how it was made.</p>
+          <p className="text-[13px] leading-5 text-ink-3">{trialVoice
+            ? "Twilio calls the configured shift-lead number and plays its Speech Recognition sample. Record the incident decision in the NOC."
+            : "When an agent stops for approval, it reaches the shift lead wherever they are. A voice agent reads the briefing and listens for “approve” or “reject”. The decision lands back here, with how it was made."}</p>
           <div className="mt-4 grid grid-cols-3 gap-2">
             {CHANNELS.map((c) => {
               const Icon = ICON[c.id];
               const on = settings.channel === c.id;
+              const trialChannel = backend.trialVoice && settings.mode === "live" && c.id === "phone";
               return (
                 <button key={c.id} type="button" onClick={() => setSettings({ channel: c.id })}
                   className={cx("rounded-xl border p-3 text-left transition", on ? "border-brand bg-brand/[0.08] shadow-[0_0_0_1px_rgb(var(--brand)/0.4)]" : "border-line hover:border-brand/50")}>
                   <Icon className={cx("h-4 w-4", on ? "text-brand" : "text-ink-3")} />
                   <p className="mt-2 text-[13px] font-semibold text-ink">{c.name}</p>
-                  <p className="mt-1 text-[11.5px] leading-4 text-ink-3">{c.note}</p>
-                  {settings.mode === "live" && <p className={cx("mt-2 text-[10.5px] font-semibold", backend.channels[c.id] ? "text-good" : "text-ink-4")}>{backend.channels[c.id] ? "Live" : "Dry run"}</p>}
+                  <p className="mt-1 text-[11.5px] leading-4 text-ink-3">{trialChannel ? "A real phone call with Twilio’s trial prompt." : c.note}</p>
+                  {settings.mode === "live" && <p className={cx("mt-2 text-[10.5px] font-semibold", backend.channels[c.id] ? "text-good" : "text-ink-4")}>{backend.channels[c.id] ? (trialChannel ? "Live · Twilio trial" : "Live") : "Dry run"}</p>}
                 </button>
               );
             })}
@@ -68,14 +83,9 @@ export function EscalationSettings() {
           </div>
         </div>
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">If nobody answers</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">{trialVoice ? "Trial call flow" : "If nobody answers"}</p>
           <ol className="mt-3 space-y-2">
-            {[
-              { n: "1", t: `Shift lead · ${channelName}`, d: "Rings for 25 seconds" },
-              { n: "2", t: `Backup engineer · ${channelName}`, d: "Same briefing, same choices" },
-              { n: "3", t: "Shift lead · WhatsApp message", d: "Approve, Reject or Call me buttons" },
-              { n: "4", t: "NOC screen", d: "Stays in the approvals inbox; safe actions already taken stay in place" },
-            ].map((s, i, all) => (
+            {ladder.map((s, i, all) => (
               <li key={s.n} className="flex items-start gap-3">
                 <span className="grad-bg flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white">{s.n}</span>
                 <div className="min-w-0">

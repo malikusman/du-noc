@@ -211,7 +211,7 @@ function CallButton({ stepId, who }: { stepId: string; who: string }) {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full border border-good/40 bg-good/10 px-3 py-1.5 text-[12.5px] font-semibold text-good">
         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-good" />
-        {e.status === "dialing" || e.status === "ringing" ? `Calling ${who}…` : e.status === "waiting-reply" || e.status === "messaging" ? `Sent to ${who}` : `On the line with ${who}`}
+        {e.status === "awaiting-noc" ? "Decision pending in NOC" : e.status === "dialing" || e.status === "ringing" ? `Calling ${who}…` : e.status === "waiting-reply" || e.status === "messaging" ? `Sent to ${who}` : `On the line with ${who}`}
       </span>
     );
   }

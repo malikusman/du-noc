@@ -13,7 +13,7 @@ import { useSim } from "./sim";
  *    comes back over Server-Sent Events.
  */
 
-export type CallStatus = "dialing" | "ringing" | "speaking" | "listening" | "messaging" | "waiting-reply" | "decided" | "unanswered" | "failed" | "canceled";
+export type CallStatus = "dialing" | "ringing" | "speaking" | "listening" | "messaging" | "waiting-reply" | "awaiting-noc" | "decided" | "unanswered" | "failed" | "canceled";
 
 export interface Line {
   who: "agent" | "human" | "system";
@@ -33,7 +33,10 @@ export interface Escalation {
   decision?: "approved" | "rejected";
   via?: string;
   serverId?: string;
+  recipient?: string;
   live: boolean;
+  dryRun?: boolean;
+  trialTemplate?: boolean;
   log: string[];
 }
 
@@ -49,6 +52,7 @@ export interface EscalationSettings {
 interface Backend {
   online: boolean;
   dryRun: boolean;
+  trialVoice: boolean;
   channels: Record<Channel, boolean>;
   contacts: Record<string, string>;
 }
@@ -87,7 +91,7 @@ const LINE_MS = 2900;
 export function EscalationProvider({ children }: { children: ReactNode }) {
   const sim = useSim();
   const [settings, setSettingsState] = useState<EscalationSettings>(loadSettings);
-  const [backend, setBackend] = useState<Backend>({ online: false, dryRun: true, channels: { "whatsapp-call": false, phone: false, "whatsapp-message": false }, contacts: {} });
+  const [backend, setBackend] = useState<Backend>({ online: false, dryRun: true, trialVoice: false, channels: { "whatsapp-call": false, phone: false, "whatsapp-message": false }, contacts: {} });
   const [escalations, setEscalations] = useState<Record<string, Escalation>>({});
   const [dismissed, setDismissed] = useState<string[]>([]);
   const timers = useRef<Record<string, number[]>>({});
@@ -134,7 +138,7 @@ export function EscalationProvider({ children }: { children: ReactNode }) {
     const probe = () =>
       fetch("/api/escalation/config")
         .then((r) => (r.ok ? r.json() : Promise.reject()))
-        .then((c) => alive && setBackend({ online: true, dryRun: c.dryRun, channels: c.channels, contacts: c.contacts }))
+        .then((c) => alive && setBackend({ online: true, dryRun: c.dryRun, trialVoice: c.trialVoice ?? false, channels: c.channels, contacts: c.contacts }))
         .catch(() => alive && setBackend((b) => ({ ...b, online: false })));
     probe();
     const id = window.setInterval(probe, 15000);
@@ -178,7 +182,8 @@ export function EscalationProvider({ children }: { children: ReactNode }) {
     const approver = approverAt(stepState.at);
     const script = scriptFor(INCIDENT_BY_ID[state.incident.id], stepState.step, approver.name);
     const channel = settings.channel;
-    const e: Escalation = { stepId, incidentId: state.incident.id, channel, approver, script, status: channel === "whatsapp-message" ? "messaging" : "dialing", spoken: 0, transcript: [], live, log: [] };
+    const trialTemplate = live && channel === "phone" && backend.trialVoice;
+    const e: Escalation = { stepId, incidentId: state.incident.id, channel, approver, script, status: channel === "whatsapp-message" ? "messaging" : "dialing", spoken: 0, transcript: [], live, trialTemplate, log: [] };
     setEscalations((all) => ({ ...all, [stepId]: e }));
     setDismissed((d) => d.filter((x) => x !== stepId));
 
@@ -189,7 +194,15 @@ export function EscalationProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ stepId, incident: { number: state.incident.number, title: state.incident.title, severity: state.incident.severity }, approver, channel, script }),
       })
         .then((r) => r.json())
-        .then((r) => (r.error ? patch(stepId, { status: "failed", log: [r.error] }) : patch(stepId, { serverId: r.id })))
+        .then((r) => {
+          if (r.error) patch(stepId, { status: "failed", log: [r.error] });
+          else patch(stepId, (current) => ({
+            serverId: r.id,
+            recipient: current.recipient ?? r.to,
+            dryRun: current.dryRun ?? r.dryRun,
+            trialTemplate: current.dryRun === undefined ? (r.trialTemplate ?? false) : current.trialTemplate,
+          }));
+        })
         .catch(() => patch(stepId, { status: "failed", log: ["The escalation service is not reachable."] }));
       return;
     }
@@ -203,20 +216,22 @@ export function EscalationProvider({ children }: { children: ReactNode }) {
       patch(stepId, { status: "speaking", transcript: [{ who: "system", text: `${approver.name} answered` }] });
       speakParts(stepId);
     });
-  }, [settings.channel, live, patch, later, speakParts]);
+  }, [settings.channel, live, backend.trialVoice, patch, later, speakParts]);
 
   /* ── the person on the phone decides (presenter in simulated mode, or the app in live mode) ── */
   const answer = useCallback((stepId: string, decision: "approved" | "rejected") => {
     const e = escRef.current[stepId];
     if (!e || e.decision) return;
     stopTimers(stepId);
-    const via = e.channel;
-    const said = e.channel === "whatsapp-message" ? (decision === "approved" ? "Tapped Approve" : "Tapped Reject") : decision === "approved" ? "Approve. Go ahead." : "Reject. Hold it.";
+    const via = e.trialTemplate ? "app" : e.channel;
+    const said = e.trialTemplate
+      ? (decision === "approved" ? "Approved on the NOC screen." : "Rejected on the NOC screen.")
+      : e.channel === "whatsapp-message" ? (decision === "approved" ? "Tapped Approve" : "Tapped Reject") : decision === "approved" ? "Approve. Go ahead." : "Reject. Hold it.";
     const reply = decision === "approved" ? e.script.approved : e.script.rejected;
     if (e.live && e.serverId) {
-      fetch(`/api/escalations/${e.serverId}/decision`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision, via, heard: said }) }).catch(() => {});
+      fetch(`/api/escalations/${e.serverId}/decision`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision, via, heard: e.trialTemplate ? undefined : said }) }).catch(() => {});
     }
-    patch(stepId, (x) => ({ decision, via, status: "decided", transcript: [...x.transcript, { who: "human", text: said }, ...(x.channel === "whatsapp-message" ? [] : [{ who: "agent" as const, text: reply }])] }));
+    patch(stepId, (x) => ({ decision, via, status: "decided", transcript: [...x.transcript, { who: x.trialTemplate ? "system" : "human", text: said }, ...(x.channel === "whatsapp-message" || x.trialTemplate ? [] : [{ who: "agent" as const, text: reply }])] }));
     if (decision === "approved") simRef.current.approve(stepId, via);
     else simRef.current.reject(stepId, via);
   }, [patch, stopTimers]);
@@ -236,7 +251,7 @@ export function EscalationProvider({ children }: { children: ReactNode }) {
     if (!live) return;
     const source = new EventSource("/api/escalations/stream");
     source.onmessage = (msg) => {
-      let v: { id: string; stepId: string; status: string; decision?: "approved" | "rejected"; via?: string; heard?: string; log?: { note: string }[]; channel: Channel };
+      let v: { id: string; stepId: string; status: string; decision?: "approved" | "rejected"; via?: string; heard?: string; log?: { note: string }[]; channel: Channel; to?: string; dryRun?: boolean; trialTemplate?: boolean };
       try {
         v = JSON.parse(msg.data);
       } catch {
@@ -245,18 +260,20 @@ export function EscalationProvider({ children }: { children: ReactNode }) {
       const e = escRef.current[v.stepId];
       if (!e || (e.serverId && e.serverId !== v.id)) return;
       const log = (v.log ?? []).map((l) => l.note);
+      const trialTemplate = v.trialTemplate ?? false;
+      const attempt = { dryRun: v.dryRun, trialTemplate, channel: v.channel, recipient: v.to, log };
       if (v.decision && !e.decision) {
         stopTimers(v.stepId);
-        const heard = v.heard ? `“${v.heard}”` : v.decision === "approved" ? "Approve." : "Reject.";
+        const heard = trialTemplate ? "Decided on the NOC screen." : v.heard ? `“${v.heard}”` : v.decision === "approved" ? "Approve." : "Reject.";
         const reply = v.decision === "approved" ? e.script.approved : e.script.rejected;
-        patch(v.stepId, (x) => ({ decision: v.decision, via: v.via, status: "decided", log, transcript: [...x.transcript, { who: "human", text: heard }, ...(x.channel === "whatsapp-message" ? [] : [{ who: "agent" as const, text: reply }])] }));
+        patch(v.stepId, (x) => ({ ...attempt, decision: v.decision, via: v.via, status: "decided", transcript: [...x.transcript, { who: trialTemplate ? "system" : "human", text: heard }, ...(v.channel === "whatsapp-message" || trialTemplate ? [] : [{ who: "agent" as const, text: reply }])] }));
         if (v.decision === "approved") simRef.current.approve(v.stepId, v.via ?? v.channel);
         else simRef.current.reject(v.stepId, v.via ?? v.channel);
         return;
       }
       const status = v.status === "speaking" ? "speaking" : v.status === "no-decision" || v.status === "no-answer" || v.status === "busy" ? "dialing" : (v.status as CallStatus);
-      const begin = status === "speaking" && e.spoken === 0 && e.status !== "speaking";
-      patch(v.stepId, { status: e.spoken > 0 && status === "speaking" ? e.status : status, channel: v.channel, log, ...(begin ? { transcript: [{ who: "system", text: `${e.approver.name} answered` }] } : {}) });
+      const begin = !trialTemplate && status === "speaking" && e.spoken === 0 && e.status !== "speaking";
+      patch(v.stepId, { ...attempt, status: e.spoken > 0 && status === "speaking" ? e.status : status, ...(begin ? { transcript: [{ who: "system", text: `${e.approver.name} answered` }] } : {}) });
       if (begin) speakParts(v.stepId);
       if (v.status === "waiting-reply" && e.channel === "whatsapp-message" && e.spoken === 0) patch(v.stepId, { spoken: 1, transcript: [{ who: "agent", text: e.script.message }] });
     };
